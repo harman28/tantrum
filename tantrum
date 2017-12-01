@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+require 'net/http'
+require 'uri'
+require 'json'
+
+@token=ENV['TANTRUM_TOKEN']
+
+abort("Usage: tantrum [pull_request_url]") if (ARGV.count != 1 or ARGV.first == '-h')
+abort("Error: Set TANTRUM_TOKEN") if @token.nil?
+
+def request(verb, url, body={})
+  uri = URI.parse(url)
+  klass = Object.const_get("Net::HTTP::#{verb.capitalize}")
+  req = klass.new(uri)
+  req['authorization']="token #{@token}"
+  req['User-Agent']='Razorpay/tantrum'
+  req.body = body if not body.empty?
+  http = Net::HTTP.new(uri.host, uri.port)
+  http.use_ssl = (uri.scheme == 'https')
+  res = http.request(req)
+  JSON.parse(res.body)
+end
+
+url=ARGV[0]
+url=url.sub('github.com','api.github.com/repos')
+url=url.sub('/pull/','/pulls/')
+res=request('get', url)
+url=url.split('/')[0..-3].push('issues').join('/')
+body="#{res['body']}\n\n------\n\n"
+body={'title' => res['title'], 'body' => body}
+res=request('post', url, body.to_json)
+system('open', res['url'])
