@@ -13,14 +13,13 @@ def request(verb, url, body = {})
   req = Object.const_get("Net::HTTP::#{verb.capitalize}").new(uri)
   req['authorization'] = "token #{@token}"
   req['User-Agent'] = 'Razorpay/tantrum'
-  req.body = body
+  req.body = body if not body.empty?
   http = Net::HTTP.new(uri.host, uri.port)
   http.use_ssl = (uri.scheme == 'https')
   JSON.parse(http.request(req).body)
 end
 
-url = ARGV[0]
-url = url.sub('github.com', 'api.github.com/repos')
+url = ARGV.first.sub('github.com', 'api.github.com/repos')
 url = url.sub('/pull/', '/pulls/')
 res = request('get', url)
 
@@ -28,4 +27,4 @@ url  = url.split('/')[0..-3].push('issues').join('/')
 body = {'title' => res['title'], 'body' => "#{res['body']}\n\n------\n\n" }
 res  = request('post', url, body.to_json)
 
-system('open', res['url'])
+system('open', res['url'].sub('api.github.com/repos', 'github.com'))
